@@ -48,11 +48,15 @@
             opacity: 1;
             border-color: #0d6efd; /* Bootstrap primary color */
         }
+        
+        .quantity-input {
+            width: 100px;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Header Section (Same as product_list) -->
+    <!-- Header Section (Updated with cart functionality) -->
     <header class="p-3 bg-light border-bottom sticky-top">
         <div class="container-fluid d-flex justify-content-between align-items-center">
             <!-- Left Corner: Logo/Back Link -->
@@ -65,12 +69,47 @@
             <div class="col-6 text-center">
                 <h1 class="display-6">{{ shop_name }}</h1>
             </div>
-            <!-- Right Corner: Login/Cart (Placeholder) -->
+            <!-- Right Corner: Login/Cart -->
             <div class="col-3 text-end">
-                <a href="#" class="btn btn-outline-primary btn-sm">Login</a>
+                {% if user.is_authenticated and user.is_regular_customer %}
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            {{ user.first_name|default:user.email }}
+                            {% if user.cart.total_quantity %}
+                                <span class="badge bg-danger">{{ user.cart.total_quantity }}</span>
+                            {% endif %}
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'store:view_cart' %}">
+                                My Cart 
+                                {% if user.cart.total_quantity %}
+                                    <span class="badge bg-primary">{{ user.cart.total_quantity }}</span>
+                                {% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="#">My Orders</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'users:logout' %}">Logout</a></li>
+                        </ul>
+                    </div>
+                {% else %}
+                    <a href="{% url 'users:login' %}" class="btn btn-outline-primary btn-sm">Login</a>
+                    <a href="{% url 'users:signup' %}" class="btn btn-primary btn-sm ms-2">Sign Up</a>
+                {% endif %}
             </div>
         </div>
     </header>
+
+    <!-- Messages Display -->
+    {% if messages %}
+    <div class="container mt-3">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <!-- Product Detail Section -->
     <div class="container py-5">
@@ -154,14 +193,72 @@
                 {% endif %}
 
                 <!-- Stock and Action Button -->
-                <div class="d-flex align-items-center mt-5">
+                <div class="mt-5">
                     {% if product.stock > 0 %}
-                        <span class="badge bg-success me-3">In Stock ({{ product.stock }})</span>
-                        <button class="btn btn-lg btn-primary shadow-lg">Add to Cart</button>
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="badge bg-success me-3 fs-6">In Stock ({{ product.stock }})</span>
+                        </div>
+                        
+                        {% if user.is_authenticated and user.is_regular_customer %}
+                            <!-- Add to Cart Form for logged-in customers -->
+                            <form method="post" action="{% url 'store:add_to_cart' product.id %}" class="d-flex align-items-center gap-3">
+                                {% csrf_token %}
+                                <div class="d-flex align-items-center">
+                                    <label class="me-2 fw-semibold">Quantity:</label>
+                                    <input type="number" name="quantity" value="1" min="1" max="{{ product.stock }}" 
+                                           class="form-control quantity-input">
+                                </div>
+                                <button type="submit" class="btn btn-lg btn-primary shadow-lg px-4">
+                                    <i class="bi bi-cart-plus"></i> Add to Cart
+                                </button>
+                            </form>
+                        {% else %}
+                            <!-- Show login prompt for non-logged in users -->
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="d-flex align-items-center">
+                                    <label class="me-2 fw-semibold">Quantity:</label>
+                                    <input type="number" value="1" min="1" max="{{ product.stock }}" 
+                                           class="form-control quantity-input" disabled>
+                                </div>
+                                <a href="{% url 'users:login' %}?next={{ request.path }}" class="btn btn-lg btn-primary shadow-lg px-4">
+                                    Login to Purchase
+                                </a>
+                            </div>
+                            <small class="text-muted mt-2 d-block">Please login to add items to your cart</small>
+                        {% endif %}
+                        
                     {% else %}
-                        <span class="badge bg-danger me-3">Out of Stock</span>
-                        <button class="btn btn-lg btn-secondary" disabled>Notify Me</button>
+                        <!-- Out of Stock Section -->
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="badge bg-danger me-3 fs-6">Out of Stock</span>
+                        </div>
+                        <button class="btn btn-lg btn-secondary" disabled>Notify Me When Available</button>
+                        {% if user.is_authenticated and user.is_regular_customer %}
+                            <small class="text-muted mt-2 d-block">We'll notify you when this product is back in stock</small>
+                        {% else %}
+                            <small class="text-muted mt-2 d-block">
+                                <a href="{% url 'users:login' %}" class="text-decoration-none">Login</a> to get notified when this product is back in stock
+                            </small>
+                        {% endif %}
                     {% endif %}
+                </div>
+
+                <!-- Additional Actions -->
+                <div class="mt-4 pt-3 border-top">
+                    <div class="row g-2">
+                        {% if user.is_authenticated and user.is_regular_customer %}
+                            <div class="col-12 col-sm-6">
+                                <a href="{% url 'store:view_cart' %}" class="btn btn-outline-success w-100">
+                                    <i class="bi bi-cart-check"></i> View Cart
+                                </a>
+                            </div>
+                        {% endif %}
+                        <div class="col-12 col-sm-6">
+                            <a href="{% url 'store:product_list' %}" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-arrow-left"></i> Continue Shopping
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
             <!-- End Right Column -->
@@ -186,6 +283,22 @@
                     thumb.classList.add('active');
                 });
             });
+
+            // Quantity input validation
+            const quantityInput = document.querySelector('input[name="quantity"]');
+            if (quantityInput) {
+                quantityInput.addEventListener('change', function() {
+                    const maxStock = parseInt(this.getAttribute('max'));
+                    const value = parseInt(this.value);
+                    
+                    if (value < 1) {
+                        this.value = 1;
+                    } else if (value > maxStock) {
+                        this.value = maxStock;
+                        alert(`Only ${maxStock} items available in stock.`);
+                    }
+                });
+            }
         });
     </script>
 </body>

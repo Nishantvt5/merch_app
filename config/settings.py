@@ -35,7 +35,7 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',  # Add your users app here
     'store.apps.StoreConfig',
     'rest_framework',       
-    'rest_framework_simplejwt',
+    'rest_framework.authtoken',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

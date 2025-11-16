@@ -1,5 +1,8 @@
-from django.shortcuts import render, get_object_or_404
-from .models import Product, Category, ProductAttribute, ProductAttributeValue
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from .models import Product, Category, ProductAttribute, ProductAttributeValue, Cart, CartItem
+from .forms import AddToCartForm
 
 def product_list(request, category_slug=None):
     """
@@ -51,3 +54,87 @@ def product_detail(request, category_slug, product_slug):
     }
 
     return render(request, 'store/product_detail.html', context)
+
+
+@login_required
+def add_to_cart(request, product_id):
+    """
+    Add product to cart
+    """
+    product = get_object_or_404(Product, id=product_id, is_available=True)
+    
+    # Get or create cart for user
+    cart, created = Cart.objects.get_or_create(user=request.user)
+    
+    if request.method == 'POST':
+        quantity = int(request.POST.get('quantity', 1))
+        
+        # Check if item already exists in cart
+        cart_item, created = CartItem.objects.get_or_create(
+            cart=cart,
+            product=product,
+            defaults={'quantity': quantity}
+        )
+        
+        if not created:
+            # Update quantity if item already exists
+            cart_item.quantity += quantity
+            cart_item.save()
+            messages.success(request, f'Updated {product.name} quantity in your cart.')
+        else:
+            messages.success(request, f'Added {product.name} to your cart.')
+        
+        return redirect('store:product_list')
+    
+    return redirect('store:product_list')
+
+@login_required
+def view_cart(request):
+    """
+    Display user's cart
+    """
+    try:
+        cart = Cart.objects.get(user=request.user)
+        cart_items = cart.items.select_related('product').all()
+    except Cart.DoesNotExist:
+        cart = None
+        cart_items = []
+    
+    context = {
+        'shop_name': 'DD Creation',
+        'cart': cart,
+        'cart_items': cart_items,
+    }
+    return render(request, 'store/cart.html', context)
+
+@login_required
+def update_cart_item(request, item_id):
+    """
+    Update cart item quantity
+    """
+    cart_item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
+    
+    if request.method == 'POST':
+        quantity = int(request.POST.get('quantity', 1))
+        
+        if quantity > 0:
+            cart_item.quantity = quantity
+            cart_item.save()
+            messages.success(request, 'Cart updated successfully.')
+        else:
+            cart_item.delete()
+            messages.success(request, 'Item removed from cart.')
+    
+    return redirect('store:view_cart')
+
+@login_required
+def remove_from_cart(request, item_id):
+    """
+    Remove item from cart
+    """
+    cart_item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
+    product_name = cart_item.product.name
+    cart_item.delete()
+    messages.success(request, f'{product_name} removed from your cart.')
+    
+    return redirect('store:view_cart')

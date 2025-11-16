@@ -1,39 +1,30 @@
-# users/admin.py
-
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .forms import CustomUserCreationForm, CustomUserChangeForm
 from .models import CustomUser
+from .forms import CustomUserCreationForm, CustomUserChangeForm
 
-# Use custom forms in the admin interface
 class CustomUserAdmin(UserAdmin):
     add_form = CustomUserCreationForm
     form = CustomUserChangeForm
     model = CustomUser
-    list_display = (
-        'email', 
-        'first_name', 
-        'is_active', 
-        'is_customer', 
-        'is_admin', 
-        'is_staff'
-    )
-    list_filter = ('is_active', 'is_customer', 'is_admin')
+    list_display = ('email', 'first_name', 'last_name', 'is_customer', 'is_admin', 'is_active')
+    list_filter = ('is_customer', 'is_admin', 'is_active')
     
-    # Custom fieldsets for better organization
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
         ('Personal info', {'fields': ('first_name', 'last_name')}),
-        ('Permissions', {'fields': ('is_active', 'is_customer', 'is_admin', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Permissions', {'fields': ('is_active', 'is_customer', 'is_admin', 'is_staff')}),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
+    
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'password', 'password2', 'first_name', 'last_name', 'is_admin'), # is_admin added to creation form
-        }),
+            'fields': ('email', 'first_name', 'last_name', 'password1', 'password2', 'is_admin')}
+        ),
     )
-    search_fields = ('email',)
+    
+    search_fields = ('email', 'first_name', 'last_name')
     ordering = ('email',)
 
 admin.site.register(CustomUser, CustomUserAdmin)
